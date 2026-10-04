@@ -1,0 +1,25 @@
+# Paste this into https://api.slack.com/apps → Create New App → From a manifest.
+# Create one app per workspace so each stays an internal app of that workspace.
+display_information:
+  name: slack-hop
+  description: Lets the slack-hop CLI read and post in this workspace as you.
+oauth_config:
+  scopes:
+    user:
+      - channels:history
+      - channels:read
+      - chat:write
+      - groups:history
+      - groups:read
+      - im:history
+      - im:read
+      - im:write
+      - mpim:history
+      - mpim:read
+      - search:read
+      - users:read
+      - users:read.email
+settings:
+  org_deploy_enabled: false
+  socket_mode_enabled: false
+  token_rotation_enabled: false
