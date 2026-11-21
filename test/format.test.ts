@@ -202,6 +202,49 @@ describe('formatMessage', () => {
     expect(await messageBody(message, names(), SHORT)).toBe('Build 512 failed on main\nvia CI');
   });
 
+  it('shows a bot\'s reply once when its text is a Markdown copy of its rich-text blocks', async () => {
+    const blocks: SlackBlock[] = [
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Working in acme/app' }] },
+      {
+        type: 'rich_text',
+        elements: [
+          { type: 'rich_text_section', elements: [{ type: 'text', text: 'Summary' }] },
+          {
+            type: 'rich_text_section',
+            elements: [
+              { type: 'text', text: 'We landed ' },
+              { type: 'text', text: '14 PRs' },
+              { type: 'text', text: ' onto ' },
+              { type: 'text', text: 'main' },
+              { type: 'text', text: '.' },
+            ],
+          },
+          {
+            type: 'rich_text_list',
+            elements: [
+              { type: 'rich_text_section', elements: [{ type: 'link', url: 'https://example.com/pull/12', text: 'PR 12' }] },
+              { type: 'rich_text_section', elements: [{ type: 'text', text: 'PR 13' }] },
+            ],
+          },
+        ],
+      },
+    ];
+    const text = '## Summary\nWe landed **14 PRs** onto `main`.\n\n- [PR 12](https://example.com/pull/12)\n- PR 13';
+    const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text, blocks };
+    expect(await messageBody(message, names(), SHORT)).toBe(
+      'Working in acme/app\nSummary\nWe landed 14 PRs onto main.\n• PR 12 (https://example.com/pull/12)\n• PR 13',
+    );
+  });
+
+  it('keeps a bot\'s summary when it is only formatting marks', async () => {
+    const message = {
+      ts: '1790812800.000100',
+      text: '***',
+      blocks: [{ type: 'context', elements: [{ type: 'mrkdwn' as const, text: 'via CI' }] }],
+    };
+    expect(await messageBody(message, names(), SHORT)).toBe('***\nvia CI');
+  });
+
   it('keeps < and > in plain-text block headers', async () => {
     const message = { ts: '1790812800.000100', text: 'summary', blocks: [{ type: 'header', text: { type: 'plain_text', text: 'Use <Button> & co' } }] };
     expect(await messageBody(message, names(), SHORT)).toBe('summary\nUse <Button> & co');

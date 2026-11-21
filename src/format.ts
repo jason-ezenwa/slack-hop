@@ -136,6 +136,21 @@ function hasLayoutBlocks(message: SlackMessage): boolean {
   return (message.blocks ?? []).some((block) => block.type !== 'rich_text');
 }
 
+// Bots often write `text` in Markdown (**bold**, [label](url), - lists) while their rich-text blocks hold the
+// same words styled, so the two are compared by their words alone, with links reduced to their labels.
+function wordsOf(text: string): string {
+  return text
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/<[^>|]+\|([^>]*)>/g, '$1')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function repeatsText(fromBlocks: string, text: string): boolean {
+  const words = wordsOf(text);
+  return words !== '' && wordsOf(fromBlocks).includes(words);
+}
+
 // The main text of a message: its blocks when they hold more than a copy of the text, else the text itself.
 // A summary the blocks don't repeat (e.g. a bot that adds only a footer block) is kept above them.
 function messageText(message: SlackMessage): string {
@@ -143,7 +158,7 @@ function messageText(message: SlackMessage): string {
   const fromBlocks = blockText(message.blocks);
   if (!hasLayoutBlocks(message)) return text || fromBlocks;
   if (!fromBlocks) return text;
-  if (!text || fromBlocks.includes(text)) return fromBlocks;
+  if (!text || repeatsText(fromBlocks, text)) return fromBlocks;
   return `${text}\n${fromBlocks}`;
 }
 
