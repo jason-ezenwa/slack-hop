@@ -90,9 +90,22 @@ export function blockText(blocks = []) {
         blockTextObject(block.text),
         ...(block.fields ?? []).map(blockTextObject),
         ...(block.elements ?? []).map(elementText),
+        ...(block.rows ?? []).map(rowText),
     ])
         .filter(Boolean)
         .join('\n');
+}
+const isRawTextCell = (cell) => cell.type === 'raw_text' && 'text' in cell && typeof cell.text === 'string';
+// A table cell's paragraphs share its line. A missing cell reads as empty rather than failing the command.
+function cellText(cell) {
+    if (!cell)
+        return '';
+    return isRawTextCell(cell) ? escapeText(cell.text) : blockText([cell]).replace(/\n/g, ' ');
+}
+// A table row goes on one line, its cells separated by " | "; a row of empty cells is skipped.
+function rowText(row) {
+    const cells = (Array.isArray(row) ? row : []).map(cellText);
+    return cells.some(Boolean) ? cells.join(' | ') : undefined;
 }
 const isShare = (attachment) => Boolean(attachment.is_share || attachment.is_msg_unfurl);
 const isLinkPreview = (attachment) => Boolean(attachment.from_url) && !isShare(attachment);
@@ -124,6 +137,24 @@ export async function messageAuthor(message, names) {
 function hasLayoutBlocks(message) {
     return (message.blocks ?? []).some((block) => block.type !== 'rich_text');
 }
+// Bots often write `text` in Markdown (**bold**, [label](url), - lists) while their rich-text blocks hold the
+// same words styled, so the two are compared by their words alone, with links reduced to their labels.
+function wordsOf(text) {
+    return text
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/<[^>|]+\|([^>]*)>/g, '$1')
+        .replace(/&(amp|lt|gt);/g, ' ')
+        .replace(/[^\p{L}\p{N}]+/gu, ' ')
+        .trim();
+}
+// A bot's `text` may carry its tables as Markdown or leave them out, so both readings of the blocks are tried.
+function repeatsText(blocks, text) {
+    const words = wordsOf(text);
+    if (words === '')
+        return false;
+    const withoutTables = blocks.filter((block) => !block.rows);
+    return [blocks, withoutTables].some((candidate) => wordsOf(blockText(candidate)).includes(words));
+}
 // The main text of a message: its blocks when they hold more than a copy of the text, else the text itself.
 // A summary the blocks don't repeat (e.g. a bot that adds only a footer block) is kept above them.
 function messageText(message) {
@@ -133,7 +164,7 @@ function messageText(message) {
         return text || fromBlocks;
     if (!fromBlocks)
         return text;
-    if (!text || fromBlocks.includes(text))
+    if (!text || repeatsText(message.blocks ?? [], text))
         return fromBlocks;
     return `${text}\n${fromBlocks}`;
 }

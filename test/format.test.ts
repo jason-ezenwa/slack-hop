@@ -89,7 +89,31 @@ describe('truncate', () => {
   });
 });
 
+const cell = (...paragraphs: string[]): SlackBlock => ({
+  type: 'rich_text',
+  elements: paragraphs.map((text) => ({ type: 'rich_text_section' as const, elements: [{ type: 'text' as const, text }] })),
+});
+
 describe('blockText and attachmentText', () => {
+  it('reads a table block as one line per row, skipping empty rows', async () => {
+    const blocks: SlackBlock[] = [
+      {
+        type: 'table',
+        rows: [
+          [cell('PR'), cell('Area')],
+          [cell(''), { type: 'raw_text', text: '' }],
+          [{ type: 'raw_text', text: '<5ms & #420' }, cell('Design <system>', 'and tokens')],
+        ],
+      },
+    ];
+    expect(await renderText(blockText(blocks), names())).toBe('PR | Area\n<5ms & #420 | Design <system> and tokens');
+  });
+
+  it('reads a malformed table cell or row as empty instead of failing', () => {
+    const rows = [[null, cell('B')], null] as unknown as SlackBlock['rows'];
+    expect(blockText([{ type: 'table', rows }])).toBe(' | B');
+  });
+
   it('reads text from sections, fields, context and rich text', () => {
     const blocks: SlackBlock[] = [
       { type: 'header', text: { text: 'Release' } },
@@ -200,6 +224,69 @@ describe('formatMessage', () => {
       blocks: [{ type: 'context', elements: [{ type: 'mrkdwn' as const, text: 'via CI' }] }],
     };
     expect(await messageBody(message, names(), SHORT)).toBe('Build 512 failed on main\nvia CI');
+  });
+
+  it('shows a bot\'s reply once when its text is a Markdown copy of its rich-text blocks', async () => {
+    const blocks: SlackBlock[] = [
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Working in acme/app' }] },
+      {
+        type: 'rich_text',
+        elements: [
+          { type: 'rich_text_section', elements: [{ type: 'text', text: 'Summary' }] },
+          {
+            type: 'rich_text_section',
+            elements: [
+              { type: 'text', text: 'We landed ' },
+              { type: 'text', text: '14 PRs' },
+              { type: 'text', text: ' onto ' },
+              { type: 'text', text: 'main' },
+              { type: 'text', text: '.' },
+            ],
+          },
+          {
+            type: 'rich_text_list',
+            elements: [
+              { type: 'rich_text_section', elements: [{ type: 'link', url: 'https://example.com/pull/12', text: 'PR 12' }] },
+              { type: 'rich_text_section', elements: [{ type: 'text', text: 'PR 13' }] },
+            ],
+          },
+        ],
+      },
+    ];
+    const text = '## Summary\nWe landed **14 PRs** onto `main`.\n\n- [PR 12](https://example.com/pull/12)\n- PR 13';
+    const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text, blocks };
+    expect(await messageBody(message, names(), SHORT)).toBe(
+      'Working in acme/app\nSummary\nWe landed 14 PRs onto main.\n• PR 12 (https://example.com/pull/12)\n• PR 13',
+    );
+  });
+
+  it('prints a bot\'s Markdown table once when its blocks hold the same table', async () => {
+    const blocks: SlackBlock[] = [
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Working in acme/app' }] },
+      { type: 'table', rows: [[cell('PR'), cell('Area')], [cell('#420'), cell('Design')]] },
+    ];
+    const text = '| PR | Area |\n|----|------|\n| #420 | Design |';
+    const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text, blocks };
+    expect(await messageBody(message, names(), SHORT)).toBe('Working in acme/app\nPR | Area\n#420 | Design');
+  });
+
+  it('prints a bot\'s reply once when its text leaves out the table its blocks hold', async () => {
+    const blocks: SlackBlock[] = [
+      cell('Here are the results'),
+      { type: 'table', rows: [[cell('A'), cell('B')]] },
+      cell('All done'),
+    ];
+    const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text: 'Here are the results\nAll done', blocks };
+    expect(await messageBody(message, names(), SHORT)).toBe('Here are the results\nA | B\nAll done');
+  });
+
+  it('keeps a bot\'s summary when it is only formatting marks', async () => {
+    const message = {
+      ts: '1790812800.000100',
+      text: '***',
+      blocks: [{ type: 'context', elements: [{ type: 'mrkdwn' as const, text: 'via CI' }] }],
+    };
+    expect(await messageBody(message, names(), SHORT)).toBe('***\nvia CI');
   });
 
   it('keeps < and > in plain-text block headers', async () => {
