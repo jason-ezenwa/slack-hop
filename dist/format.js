@@ -84,12 +84,23 @@ function blockTextObject(object) {
         return undefined;
     return object.type === 'plain_text' ? escapeText(object.text) : object.text;
 }
+// A table cell is raw text or a rich-text block; a cell's paragraphs share its line.
+function cellText(cell) {
+    if (typeof cell.text === 'string')
+        return escapeText(cell.text);
+    return blockText([cell]).replace(/\n/g, ' ');
+}
+// One line per table row, cells separated by " | ".
+function tableText(rows = []) {
+    return rows.map((row) => row.map(cellText).join(' | ')).join('\n');
+}
 export function blockText(blocks = []) {
     return blocks
         .flatMap((block) => [
         blockTextObject(block.text),
         ...(block.fields ?? []).map(blockTextObject),
         ...(block.elements ?? []).map(elementText),
+        tableText(block.rows),
     ])
         .filter(Boolean)
         .join('\n');

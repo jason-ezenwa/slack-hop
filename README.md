@@ -4,6 +4,8 @@
 
 A CLI for reading and posting in several Slack workspaces as yourself. It is built for AI agents, such as Claude Code (including cloud sessions) or any agent that can run shell commands, where a built-in Slack connector only covers one workspace: keep your main workspace on the connector and use `slack-hop` for the rest.
 
+![slack-hop listing two workspaces, reading a thread in which Claude answers a question, and replying in that thread](assets/demo.gif)
+
 Each workspace gets its own user token, stored in an environment variable. `--workspace client-b` uses `SLACK_TOKEN_CLIENT_B`.
 
 ```

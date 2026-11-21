@@ -1,4 +1,4 @@
-import type { SlackAttachment, SlackBlock, SlackBlockElement, SlackMessage, SlackTextObject } from './slack-types.js';
+import type { SlackAttachment, SlackBlock, SlackBlockElement, SlackMessage, SlackTableCell, SlackTextObject } from './slack-types.js';
 import { personLabel } from './person.js';
 import type { UserNames } from './user-names.js';
 
@@ -94,12 +94,24 @@ function blockTextObject(object: SlackTextObject | undefined): string | undefine
   return object.type === 'plain_text' ? escapeText(object.text) : object.text;
 }
 
+// A table cell is raw text or a rich-text block; a cell's paragraphs share its line.
+function cellText(cell: SlackTableCell): string {
+  if (typeof cell.text === 'string') return escapeText(cell.text);
+  return blockText([cell as SlackBlock]).replace(/\n/g, ' ');
+}
+
+// One line per table row, cells separated by " | ".
+function tableText(rows: SlackTableCell[][] = []): string {
+  return rows.map((row) => row.map(cellText).join(' | ')).join('\n');
+}
+
 export function blockText(blocks: SlackBlock[] = []): string {
   return blocks
     .flatMap((block) => [
       blockTextObject(block.text),
       ...(block.fields ?? []).map(blockTextObject),
       ...(block.elements ?? []).map(elementText),
+      tableText(block.rows),
     ])
     .filter(Boolean)
     .join('\n');

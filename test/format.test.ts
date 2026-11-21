@@ -236,6 +236,26 @@ describe('formatMessage', () => {
     );
   });
 
+  it('reads table blocks as one line per row, and prints a bot\'s Markdown table once', async () => {
+    const cell = (text: string): SlackBlock => ({
+      type: 'rich_text',
+      elements: [{ type: 'rich_text_section', elements: [{ type: 'text', text }] }],
+    });
+    const blocks: SlackBlock[] = [
+      { type: 'context', elements: [{ type: 'mrkdwn', text: 'Working in acme/app' }] },
+      {
+        type: 'table',
+        rows: [
+          [cell('PR'), cell('Area')],
+          [{ type: 'raw_text', text: '#420' }, cell('Design <system>')],
+        ],
+      },
+    ];
+    const text = '| PR | Area |\n|----|------|\n| #420 | Design &lt;system&gt; |';
+    const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text, blocks };
+    expect(await messageBody(message, names(), SHORT)).toBe('Working in acme/app\nPR | Area\n#420 | Design <system>');
+  });
+
   it('keeps a bot\'s summary when it is only formatting marks', async () => {
     const message = {
       ts: '1790812800.000100',
