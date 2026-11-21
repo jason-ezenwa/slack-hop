@@ -1,11 +1,7 @@
-import type { Command } from '../command.js';
+import type { Command, WorkspaceStatus } from './command-types.js';
 import { printList } from '../format.js';
-import { configuredWorkspaces, resolveToken, SlackApiError, SlackClient } from '../slack-client.js';
-
-type AuthTest = { team: string; user: string; url: string };
-type WorkspaceStatus =
-  | { workspace: string; status: 'ok'; team: string; user: string; url: string }
-  | { workspace: string; status: 'rejected'; error: string };
+import { configuredWorkspaces, resolveToken, SlackApiError, SlackClient } from '../slack/slack-client.js';
+import type { AuthTest } from '../slack/slack-types.js';
 
 export const workspacesCommand: Command = {
   name: 'workspaces',

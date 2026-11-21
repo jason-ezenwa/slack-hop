@@ -1,7 +1,4 @@
-import { UsageError } from './slack-client.js';
-// Shared by the commands that print messages.
-export const FULL_OPTION = { full: { type: 'boolean' } };
-export const FULL_HELP = '  --full    Show whole messages (long ones are shortened by default)';
+import { UsageError } from '../slack/slack-client.js';
 export function wantsFull(options) {
     return options.full === true;
 }

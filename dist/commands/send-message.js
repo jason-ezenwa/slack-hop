@@ -1,7 +1,7 @@
-import { optionalString, requirePositional } from '../command.js';
+import { optionalString, requirePositional } from './command.js';
 import { printJson } from '../format.js';
-import { parseThreadLink, resolveConversation, threadTsIn } from '../resolve.js';
-import { SlackApiError, UsageError } from '../slack-client.js';
+import { parseThreadLink, resolveConversation, threadTsIn } from '../slack/resolve.js';
+import { SlackApiError, UsageError } from '../slack/slack-client.js';
 async function permalinkFor(client, channel, ts) {
     try {
         const data = await client.call('chat.getPermalink', { channel, message_ts: ts });

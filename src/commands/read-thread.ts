@@ -1,9 +1,11 @@
-import { FULL_HELP, FULL_OPTION, limitHelp, parseLimit, requirePositional, type Command, wantsFull } from '../command.js';
+import { FULL_HELP, FULL_OPTION } from './command-constants.js';
+import type { Command } from './command-types.js';
+import { limitHelp, parseLimit, requirePositional, wantsFull } from './command.js';
 import { formatMessage, printList } from '../format.js';
-import { parseThreadLink, resolveConversation, threadTsIn, type ThreadRef } from '../resolve.js';
-import type { SlackClient } from '../slack-client.js';
-import type { SlackMessage } from '../slack-types.js';
-import { UserNames } from '../user-names.js';
+import { parseThreadLink, resolveConversation, threadTsIn } from '../slack/resolve.js';
+import type { SlackClient } from '../slack/slack-client.js';
+import type { SlackMessage, ThreadRef } from '../slack/slack-types.js';
+import { UserNames } from '../slack/user-names.js';
 
 const LIMIT = { fallback: 200, max: 1000 };
 
@@ -40,6 +42,7 @@ export const readThreadCommand: Command = {
     // Slack repeats the parent message at the top of every page, so keep each ts once.
     const seen = new Set<string>();
     const messages: SlackMessage[] = [];
+
     for await (const message of client.iterate<SlackMessage>('conversations.replies', 'messages', thread)) {
       if (seen.has(message.ts)) continue;
       seen.add(message.ts);
@@ -48,6 +51,7 @@ export const readThreadCommand: Command = {
     }
 
     const names = new UserNames(client);
+
     await printList(messages, json, 'No messages.', (message) =>
       formatMessage(message, names, wantsFull(options)),
     );

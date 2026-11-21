@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { attachmentText, blockText, formatMessage, messageBody, renderText, truncate } from '../src/format.js';
 import { personLabel } from '../src/person.js';
-import { SlackClient } from '../src/slack-client.js';
-import type { SlackBlock } from '../src/slack-types.js';
-import { UserNames } from '../src/user-names.js';
+import { SlackClient } from '../src/slack/slack-client.js';
+import type { SlackBlock } from '../src/slack/slack-types.js';
+import { UserNames } from '../src/slack/user-names.js';
 import { fakeSlack } from './fake-slack.js';
 
 const SHORT = false;
@@ -28,6 +28,7 @@ describe('renderText', () => {
     const text =
       'hi <@U0000JANE> and <@U0000NOBODY>, see <#C0123ABCD|eng> and <#C0123ABCD>, <!here>, ' +
       '<!subteam^S0123ABCD|@devs>, <https://example.com|the docs>, <https://example.com> &amp; a &lt;b&gt;';
+
     expect(await renderText(text, names())).toBe(
       'hi @Jane and @U0000NOBODY, see #eng and #C0123ABCD, @here, ' +
         '@devs, the docs (https://example.com), https://example.com & a <b>',
@@ -106,6 +107,7 @@ describe('blockText and attachmentText', () => {
         ],
       },
     ];
+
     expect(await renderText(blockText(blocks), names())).toBe('PR | Area\n<5ms & #420 | Design <system> and tokens');
   });
 
@@ -134,6 +136,7 @@ describe('blockText and attachmentText', () => {
         ],
       },
     ];
+
     expect(blockText(blocks)).toBe('Release\nShipped *v2*\nOwner: <@U0000JANE>\nvia CI\nping <@U0000JANE> see <https://example.com>');
   });
 
@@ -147,6 +150,7 @@ describe('blockText and attachmentText', () => {
         ],
       },
     ];
+
     expect(await renderText(blockText(blocks), names())).toBe('@here if a <b> & c :tada:\n• one\n• two');
   });
 
@@ -160,6 +164,7 @@ describe('blockText and attachmentText', () => {
         ],
       },
     ] as unknown as SlackBlock[];
+
     expect(blockText(blocks)).toBe('due Oct 1');
   });
 
@@ -167,6 +172,7 @@ describe('blockText and attachmentText', () => {
     expect(
       attachmentText({ pretext: 'Issue created', title: 'PROJ-12 Fix login', text: 'Users cannot log in', fields: [{ title: 'Priority', value: 'High' }] }),
     ).toBe('Issue created\nPROJ-12 Fix login\nUsers cannot log in\nPriority: High');
+
     expect(attachmentText({ fallback: 'PROJ-12 Fix login' })).toBe('PROJ-12 Fix login');
   });
 });
@@ -174,6 +180,7 @@ describe('blockText and attachmentText', () => {
 describe('formatMessage', () => {
   it('shows time, author with handle, text, files and reply count', async () => {
     const message = { ts: '1790812800.000100', user: 'U0000JANE', text: 'report', reply_count: 3, files: [{ name: 'q3.pdf' }] };
+
     expect(await formatMessage(message, names(), SHORT)).toBe(
       '[2026-10-01 00:00 UTC] Jane (@jane.doe): report\n[file: q3.pdf]\n    (ts 1790812800.000100, 3 replies)',
     );
@@ -195,6 +202,7 @@ describe('formatMessage', () => {
       text: '',
       attachments: [{ title: 'PROJ-12 Fix login', text: 'Assigned to <@U0000JANE>' }],
     };
+
     expect(await formatMessage(message, names(), SHORT)).toContain('] Jira: PROJ-12 Fix login\nAssigned to @Jane');
   });
 
@@ -213,6 +221,7 @@ describe('formatMessage', () => {
         { type: 'section', text: { text: 'The essay editor is great' }, fields: [{ text: 'Satisfaction: 10 / 10' }] },
       ],
     };
+
     expect(await messageBody(message, names(), SHORT)).toBe('New feedback submitted\nThe essay editor is great\nSatisfaction: 10 / 10');
   });
 
@@ -223,6 +232,7 @@ describe('formatMessage', () => {
       text: 'Build 512 failed on main',
       blocks: [{ type: 'context', elements: [{ type: 'mrkdwn' as const, text: 'via CI' }] }],
     };
+
     expect(await messageBody(message, names(), SHORT)).toBe('Build 512 failed on main\nvia CI');
   });
 
@@ -253,8 +263,10 @@ describe('formatMessage', () => {
         ],
       },
     ];
+
     const text = '## Summary\nWe landed **14 PRs** onto `main`.\n\n- [PR 12](https://example.com/pull/12)\n- PR 13';
     const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text, blocks };
+
     expect(await messageBody(message, names(), SHORT)).toBe(
       'Working in acme/app\nSummary\nWe landed 14 PRs onto main.\n• PR 12 (https://example.com/pull/12)\n• PR 13',
     );
@@ -265,6 +277,7 @@ describe('formatMessage', () => {
       { type: 'context', elements: [{ type: 'mrkdwn', text: 'Working in acme/app' }] },
       { type: 'table', rows: [[cell('PR'), cell('Area')], [cell('#420'), cell('Design')]] },
     ];
+
     const text = '| PR | Area |\n|----|------|\n| #420 | Design |';
     const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text, blocks };
     expect(await messageBody(message, names(), SHORT)).toBe('Working in acme/app\nPR | Area\n#420 | Design');
@@ -276,6 +289,7 @@ describe('formatMessage', () => {
       { type: 'table', rows: [[cell('A'), cell('B')]] },
       cell('All done'),
     ];
+
     const message = { ts: '1790812800.000100', bot_id: 'B0000CLAUDE', text: 'Here are the results\nAll done', blocks };
     expect(await messageBody(message, names(), SHORT)).toBe('Here are the results\nA | B\nAll done');
   });
@@ -286,6 +300,7 @@ describe('formatMessage', () => {
       text: '***',
       blocks: [{ type: 'context', elements: [{ type: 'mrkdwn' as const, text: 'via CI' }] }],
     };
+
     expect(await messageBody(message, names(), SHORT)).toBe('***\nvia CI');
   });
 
@@ -298,6 +313,7 @@ describe('formatMessage', () => {
     const blocks: SlackBlock[] = [
       { type: 'rich_text', elements: [{ type: 'rich_text_section', elements: [{ type: 'text', text: 'see the docs' }] }] },
     ];
+
     const message = { ts: '1790812800.000100', user: 'U0000JANE', text: 'see <https://example.com|the docs>', blocks };
     expect(await messageBody(message, names(), SHORT)).toBe('see the docs (https://example.com)');
   });
@@ -309,6 +325,7 @@ describe('formatMessage', () => {
       text: 'FYI',
       attachments: [{ from_url: 'https://acme.slack.com/archives/C1/p1', is_share: true, author_name: 'Sam', text: 'The release moved to Friday' }],
     };
+
     expect(await messageBody(message, names(), SHORT)).toBe('FYI\n[shared message from Sam]\nThe release moved to Friday');
   });
 
@@ -330,6 +347,7 @@ describe('formatMessage', () => {
       text: 'look at <https://example.com>',
       attachments: [{ from_url: 'https://example.com', title: 'Example Domain', text: 'preview text' }],
     };
+
     expect(await formatMessage(message, names(), SHORT)).toContain(': look at https://example.com\n    (ts');
   });
 });

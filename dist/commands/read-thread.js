@@ -1,7 +1,8 @@
-import { FULL_HELP, FULL_OPTION, limitHelp, parseLimit, requirePositional, wantsFull } from '../command.js';
+import { FULL_HELP, FULL_OPTION } from './command-constants.js';
+import { limitHelp, parseLimit, requirePositional, wantsFull } from './command.js';
 import { formatMessage, printList } from '../format.js';
-import { parseThreadLink, resolveConversation, threadTsIn } from '../resolve.js';
-import { UserNames } from '../user-names.js';
+import { parseThreadLink, resolveConversation, threadTsIn } from '../slack/resolve.js';
+import { UserNames } from '../slack/user-names.js';
 const LIMIT = { fallback: 200, max: 1000 };
 async function threadFrom(client, positionals) {
     const first = requirePositional(positionals, 0, 'message-link or channel');

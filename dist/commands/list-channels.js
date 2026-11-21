@@ -1,15 +1,10 @@
-import { limitHelp, optionalString, parseLimit } from '../command.js';
+import { TYPE_NAMES } from './command-constants.js';
+import { limitHelp, optionalString, parseLimit } from './command.js';
 import { printList } from '../format.js';
-import { UsageError } from '../slack-client.js';
+import { UsageError } from '../slack/slack-client.js';
 import { personLabel } from '../person.js';
-import { UserNames } from '../user-names.js';
+import { UserNames } from '../slack/user-names.js';
 const LIMIT = { fallback: 200, max: 1000 };
-const TYPE_NAMES = new Map([
-    ['public', 'public_channel'],
-    ['private', 'private_channel'],
-    ['dm', 'im'],
-    ['group-dm', 'mpim'],
-]);
 function parseTypes(value) {
     const names = (value ?? 'public,private').split(',').map((name) => name.trim());
     return names
@@ -40,7 +35,7 @@ export const listChannelsCommand = {
     async run({ client, options, json }) {
         const conversations = await client.paginate('users.conversations', 'channels', { types: parseTypes(optionalString(options.types)), exclude_archived: true }, parseLimit(options.limit, LIMIT));
         const names = new UserNames(client);
-        // DMs are labelled by person. Listing everyone once beats a users.info call per DM, which hits rate limits.
+        // Listing everyone once avoids a users.info call per DM label, which hits rate limits.
         if (!json && conversations.some((conversation) => conversation.is_im))
             await names.loadAll();
         await printList(conversations, json, 'No conversations.', async (conversation) => {

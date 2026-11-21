@@ -1,14 +1,17 @@
-import { personFrom, type Person } from './person.js';
+import { personFrom } from '../person.js';
+import type { Person } from '../types.js';
 import type { SlackUser } from './slack-types.js';
 import { SlackApiError, type SlackClient } from './slack-client.js';
 
 // Starts each lookup once and shares the pending result with every later caller.
 function memo<T>(cache: Map<string, Promise<T>>, key: string, load: () => Promise<T>): Promise<T> {
   let value = cache.get(key);
+
   if (!value) {
     value = load();
     cache.set(key, value);
   }
+
   return value;
 }
 
@@ -22,7 +25,7 @@ async function orFallback<T>(lookup: Promise<T>, fallback: T): Promise<T> {
   }
 }
 
-// Looks up people and bots once each and remembers them for the rest of the command.
+// Caches people and bot lookups for the rest of the command.
 export class UserNames {
   private readonly people = new Map<string, Promise<Person>>();
   private readonly bots = new Map<string, Promise<string | undefined>>();
@@ -44,8 +47,7 @@ export class UserNames {
     return memo(this.dmPartners, channelId, () => this.lookupDmPartner(channelId));
   }
 
-  // One paged users.list call instead of a users.info call per user, for commands that name many people.
-  // If it fails, names are looked up one by one as before.
+  // One paged users.list call instead of a users.info call per user; on failure, lookups fall back to one by one.
   async loadAll(): Promise<void> {
     try {
       for await (const user of this.client.iterate<SlackUser>('users.list', 'members')) {

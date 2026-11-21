@@ -1,7 +1,9 @@
-import { optionalString, requirePositional, type Command } from '../command.js';
+import type { Command } from './command-types.js';
+import { optionalString, requirePositional } from './command.js';
 import { printJson } from '../format.js';
-import { parseThreadLink, resolveConversation, threadTsIn } from '../resolve.js';
-import { SlackApiError, UsageError, type SlackClient } from '../slack-client.js';
+import { parseThreadLink, resolveConversation, threadTsIn } from '../slack/resolve.js';
+import { SlackApiError, UsageError, type SlackClient } from '../slack/slack-client.js';
+import type { Posted } from '../slack/slack-types.js';
 
 async function permalinkFor(client: SlackClient, channel: string, ts: string): Promise<string | undefined> {
   try {
@@ -14,8 +16,6 @@ async function permalinkFor(client: SlackClient, channel: string, ts: string): P
   }
 }
 
-type Posted = { channel: string; ts: string };
-
 async function postMessage(client: SlackClient, channel: string, text: string, threadTs?: string): Promise<Posted> {
   try {
     return await client.call<Posted>('chat.postMessage', { channel, text, thread_ts: threadTs });
@@ -24,6 +24,7 @@ async function postMessage(client: SlackClient, channel: string, text: string, t
       const code = `${error.code}. The message may have been sent; check the conversation before retrying`;
       throw new SlackApiError(error.method, code, { outcomeUnknown: true });
     }
+
     throw error;
   }
 }
@@ -67,6 +68,7 @@ export const sendMessageCommand: Command = {
       printJson({ channel: posted.channel, ts: posted.ts, permalink });
       return;
     }
+
     console.log(`Sent to ${posted.channel} (ts ${posted.ts})${permalink ? `: ${permalink}` : '.'}`);
   },
 };

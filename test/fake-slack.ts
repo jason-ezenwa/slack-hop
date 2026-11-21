@@ -9,6 +9,7 @@ export type Handler = (params: URLSearchParams) => Record<string, unknown>;
 
 export function fakeSlack(handlers: Record<string, Handler>) {
   const calls: { method: string; params: URLSearchParams }[] = [];
+
   const fetchFn = fakeFetch((url, init) => {
     const method = url.slice(url.indexOf('/api/') + '/api/'.length);
     const params = new URLSearchParams(init?.body as URLSearchParams);
@@ -17,5 +18,6 @@ export function fakeSlack(handlers: Record<string, Handler>) {
     const body = handler ? { ok: true, ...handler(params) } : { ok: false, error: 'unknown_method' };
     return new Response(JSON.stringify(body));
   });
+
   return { fetchFn, calls };
 }

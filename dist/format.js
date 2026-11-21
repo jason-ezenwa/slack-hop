@@ -1,11 +1,10 @@
 import { personLabel } from './person.js';
+import { PREVIEW } from './constants.js';
+import { SPECIAL, USER_MENTION } from './slack/slack-constants.js';
 export function formatTs(ts) {
     const date = new Date(Number(ts) * 1000);
     return `${date.toISOString().slice(0, 16).replace('T', ' ')} UTC`;
 }
-// Slack wraps mentions and links in <...>: <@U123>, <#C123|name>, <!here>, <https://url|label>.
-const SPECIAL = /<([^>]+)>/g;
-const USER_MENTION = /<@([UW][A-Z0-9]+)/g;
 function renderSpecial(inner, userNames) {
     const separator = inner.indexOf('|');
     const target = separator === -1 ? inner : inner.slice(0, separator);
@@ -28,11 +27,8 @@ export async function renderText(text, names) {
         .replace(/&gt;/g, '>')
         .replace(/&amp;/g, '&');
 }
-// Cutting is only worth it when it hides more than `minHidden` characters; a smaller leftover is shown in full.
-const PREVIEW = { maxLines: 6, maxChars: 400, minHidden: 100 };
-// Keeps the first `maxLines` lines and `maxChars` characters (whole characters, so emoji are never split).
-// Whitespace never decides whether a message is cut: trailing whitespace is ignored, and the hidden count is
-// taken before trimming the cut point.
+// Keeps the first `maxLines` lines and `maxChars` characters, counting whole characters so emoji are never
+// split. Trailing whitespace is ignored, and the hidden count is taken before trimming the cut point.
 export function truncate(text, { maxLines, maxChars, minHidden }) {
     const trimmed = text.trimEnd();
     const cut = Array.from(trimmed.split('\n').slice(0, maxLines).join('\n')).slice(0, maxChars);
@@ -41,8 +37,7 @@ export function truncate(text, { maxLines, maxChars, minHidden }) {
 }
 // Rich-text elements hold raw characters, but renderText expects Slack's escaped text.
 const escapeText = (raw) => raw.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-// Converts a block element to Slack's escaped markup, which renderText then makes readable.
-// Slack's data is not validated, so fields are guarded: one odd element must not fail the whole command.
+// Fields are guarded because Slack's data is not validated: one odd element must not fail the command.
 function elementText(element) {
     switch (element.type) {
         case 'text':
@@ -72,18 +67,17 @@ function elementText(element) {
             // The pieces of one paragraph sit side by side.
             return (element.elements ?? []).map(elementText).join('');
         default:
-            // Element types slack-hop doesn't handle (images, buttons, ...) still arrive at runtime; skip them.
+            // Unhandled element types (images, buttons, ...) still arrive at runtime.
             return '';
     }
 }
-// Text from Block Kit blocks, for messages that carry their content there instead of in `text`.
-// Each block, and each paragraph in a rich-text block, goes on its own line.
-// Block text objects are either Slack-escaped mrkdwn or raw plain_text, which renderText needs escaped.
+// mrkdwn arrives Slack-escaped; plain_text arrives raw and must be escaped for renderText.
 function blockTextObject(object) {
     if (!object?.text)
         return undefined;
     return object.type === 'plain_text' ? escapeText(object.text) : object.text;
 }
+// Text from Block Kit blocks, one line per block and per paragraph in a rich-text block.
 export function blockText(blocks = []) {
     return blocks
         .flatMap((block) => [
@@ -102,7 +96,7 @@ function cellText(cell) {
         return '';
     return isRawTextCell(cell) ? escapeText(cell.text) : blockText([cell]).replace(/\n/g, ' ');
 }
-// A table row goes on one line, its cells separated by " | "; a row of empty cells is skipped.
+// A row of empty cells is skipped.
 function rowText(row) {
     const cells = (Array.isArray(row) ? row : []).map(cellText);
     return cells.some(Boolean) ? cells.join(' | ') : undefined;
@@ -131,9 +125,8 @@ export async function messageAuthor(message, names) {
     }
     return 'unknown';
 }
-// Slack shows a message's blocks rather than its text when it has them; `text` is then only the notification
-// summary (e.g. a bot's "New feedback submitted"). Rich-text blocks are just a copy of what a person typed,
-// so only other block types (sections, headers, context, ...) mean the blocks hold more than the text.
+// Slack shows blocks instead of `text` when there are any, leaving `text` as a notification summary.
+// Rich-text blocks only copy what a person typed, so only other block types hold more than the text.
 function hasLayoutBlocks(message) {
     return (message.blocks ?? []).some((block) => block.type !== 'rich_text');
 }
@@ -155,8 +148,8 @@ function repeatsText(blocks, text) {
     const withoutTables = blocks.filter((block) => !block.rows);
     return [blocks, withoutTables].some((candidate) => wordsOf(blockText(candidate)).includes(words));
 }
-// The main text of a message: its blocks when they hold more than a copy of the text, else the text itself.
-// A summary the blocks don't repeat (e.g. a bot that adds only a footer block) is kept above them.
+// The text, unless the message has layout blocks: then the blocks, with the text above them only when the
+// blocks don't repeat it.
 function messageText(message) {
     const text = message.text?.trim() ? message.text : '';
     const fromBlocks = blockText(message.blocks);
@@ -168,9 +161,8 @@ function messageText(message) {
         return fromBlocks;
     return `${text}\n${fromBlocks}`;
 }
-// The readable content of a message: its text (or its blocks when the text is empty), integration cards and
-// shared messages, then its files. Link previews are skipped when the message has text of its own.
-// Unless `full` is set, long text is shortened; file markers are always shown.
+// Text, integration cards, shared messages, then files. Link previews are skipped when the message has text of
+// its own. Unless `full` is set, long text is shortened; file markers are always shown.
 export async function messageBody(message, names, full) {
     const text = messageText(message);
     const attachments = (message.attachments ?? []).filter((attachment) => !text || !isLinkPreview(attachment));
@@ -190,7 +182,6 @@ export async function formatMessage(message, names, full) {
 export function printJson(data) {
     console.log(JSON.stringify(data, null, 2));
 }
-// Prints items as JSON, as one formatted entry each, or as `emptyText` when there are none.
 export async function printList(items, json, emptyText, formatItem) {
     if (json) {
         printJson(items);

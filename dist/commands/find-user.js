@@ -1,6 +1,6 @@
-import { requirePositional } from '../command.js';
+import { requirePositional } from './command.js';
 import { printList } from '../format.js';
-import { findUsers } from '../resolve.js';
+import { findUsers } from '../slack/resolve.js';
 import { personFrom, personLabel } from '../person.js';
 export const findUserCommand = {
     name: 'find-user',

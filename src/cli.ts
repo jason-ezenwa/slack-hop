@@ -1,5 +1,7 @@
 import { parseArgs } from 'node:util';
-import { optionalString, type Command } from './command.js';
+import { COMMON_OPTIONS, JSON_HELP, WORKSPACE_HELP, WORKSPACE_OPTION } from './commands/command-constants.js';
+import type { Command } from './commands/command-types.js';
+import { optionalString } from './commands/command.js';
 import { findUserCommand } from './commands/find-user.js';
 import { listChannelsCommand } from './commands/list-channels.js';
 import { readChannelCommand } from './commands/read-channel.js';
@@ -7,7 +9,8 @@ import { readThreadCommand } from './commands/read-thread.js';
 import { searchCommand } from './commands/search.js';
 import { sendMessageCommand } from './commands/send-message.js';
 import { workspacesCommand } from './commands/workspaces.js';
-import { resolveToken, SlackApiError, SlackClient, UsageError, type Env } from './slack-client.js';
+import { resolveToken, SlackApiError, SlackClient, UsageError } from './slack/slack-client.js';
+import type { Env } from './types.js';
 
 const COMMANDS: Command[] = [
   workspacesCommand,
@@ -19,20 +22,9 @@ const COMMANDS: Command[] = [
   findUserCommand,
 ];
 
-const WORKSPACE_OPTION = { workspace: { type: 'string', short: 'w' } } as const;
-const COMMON_OPTIONS = {
-  json: { type: 'boolean' },
-  help: { type: 'boolean', short: 'h' },
-} as const;
-
-const WORKSPACE_HELP = [
-  '  -w, --workspace <name>   Workspace to use. Its token is read from SLACK_TOKEN_<NAME>,',
-  '                           e.g. --workspace client-b reads SLACK_TOKEN_CLIENT_B.',
-];
-const JSON_HELP = '      --json               Print raw JSON instead of readable text';
-
 function mainHelp(): string {
   const width = Math.max(...COMMANDS.map((command) => command.name.length));
+
   return [
     'slack-hop: read and post in Slack workspaces as yourself, one token per workspace.',
     '',
@@ -71,12 +63,14 @@ function isParseArgsError(error: unknown): error is TypeError {
 
 export async function main(argv: string[], env: Env): Promise<number> {
   const [name, ...rest] = argv;
+
   if (!name || name === '--help' || name === '-h' || name === 'help') {
     console.log(mainHelp());
     return 0;
   }
 
   const command = COMMANDS.find((candidate) => candidate.name === name);
+
   if (!command) {
     console.error(`Unknown command "${name}".\n\n${mainHelp()}`);
     return 2;
@@ -89,12 +83,14 @@ export async function main(argv: string[], env: Env): Promise<number> {
       allowPositionals: true,
       strict: true,
     });
+
     if (values.help) {
       console.log(commandHelp(command));
       return 0;
     }
 
     const base = { positionals, options: values, json: values.json === true, env };
+
     if (!command.needsWorkspace) {
       await command.run(base);
       return 0;
@@ -110,10 +106,12 @@ export async function main(argv: string[], env: Env): Promise<number> {
       console.error(`${error.message}\n\nUsage: ${command.usage}\nRun \`slack-hop ${command.name} --help\` for details.`);
       return 2;
     }
+
     if (error instanceof SlackApiError) {
       console.error(error.message);
       return 1;
     }
+
     throw error;
   }
 }
