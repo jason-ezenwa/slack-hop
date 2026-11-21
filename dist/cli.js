@@ -1,5 +1,6 @@
 import { parseArgs } from 'node:util';
-import { optionalString } from './command.js';
+import { COMMON_OPTIONS, JSON_HELP, WORKSPACE_HELP, WORKSPACE_OPTION } from './commands/command-constants.js';
+import { optionalString } from './commands/command.js';
 import { findUserCommand } from './commands/find-user.js';
 import { listChannelsCommand } from './commands/list-channels.js';
 import { readChannelCommand } from './commands/read-channel.js';
@@ -7,7 +8,7 @@ import { readThreadCommand } from './commands/read-thread.js';
 import { searchCommand } from './commands/search.js';
 import { sendMessageCommand } from './commands/send-message.js';
 import { workspacesCommand } from './commands/workspaces.js';
-import { resolveToken, SlackApiError, SlackClient, UsageError } from './slack-client.js';
+import { resolveToken, SlackApiError, SlackClient, UsageError } from './slack/slack-client.js';
 const COMMANDS = [
     workspacesCommand,
     listChannelsCommand,
@@ -17,16 +18,6 @@ const COMMANDS = [
     sendMessageCommand,
     findUserCommand,
 ];
-const WORKSPACE_OPTION = { workspace: { type: 'string', short: 'w' } };
-const COMMON_OPTIONS = {
-    json: { type: 'boolean' },
-    help: { type: 'boolean', short: 'h' },
-};
-const WORKSPACE_HELP = [
-    '  -w, --workspace <name>   Workspace to use. Its token is read from SLACK_TOKEN_<NAME>,',
-    '                           e.g. --workspace client-b reads SLACK_TOKEN_CLIENT_B.',
-];
-const JSON_HELP = '      --json               Print raw JSON instead of readable text';
 function mainHelp() {
     const width = Math.max(...COMMANDS.map((command) => command.name.length));
     return [

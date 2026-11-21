@@ -1,4 +1,4 @@
-// The parts of Slack's API objects that slack-hop reads.
+// Slack's API objects are typed only as far as slack-hop reads them.
 
 export type SlackUser = {
   id: string;
@@ -18,8 +18,8 @@ export type SlackChannel = {
   is_mpim?: boolean;
 };
 
-// Legacy attachments: integration cards (Jira, GitHub, ...), link previews (`from_url`), and shared or
-// forwarded Slack messages (`is_share`, `is_msg_unfurl`, which also carry `from_url`).
+// Legacy attachments: integration cards, link previews (`from_url`), and shared messages (`is_share`,
+// `is_msg_unfurl`), which also carry `from_url`.
 export type SlackAttachment = {
   fallback?: string;
   pretext?: string;
@@ -41,7 +41,7 @@ export type SlackBlock = {
   text?: SlackTextObject;
   fields?: SlackTextObject[];
   elements?: SlackBlockElement[];
-  // Table blocks: rows of cells.
+  // Table blocks only.
   rows?: SlackTableCell[][];
 };
 
@@ -75,3 +75,29 @@ export type SlackMessage = {
   reply_count?: number;
   files?: { name?: string; title?: string }[];
 };
+
+export type SlackResponse = {
+  ok: boolean;
+  error?: string;
+  needed?: string;
+  response_metadata?: { next_cursor?: string };
+};
+
+export type SlackApiErrorDetails = {
+  neededScope?: string;
+  // True when Slack may or may not have carried out the request, e.g. after a network failure or a 5xx.
+  outcomeUnknown?: boolean;
+};
+
+export type Params = Record<string, string | number | boolean | undefined>;
+
+export type SearchMatch = SlackMessage & {
+  permalink: string;
+  channel?: { id: string; name?: string; is_im?: boolean };
+};
+
+export type AuthTest = { team: string; user: string; url: string };
+export type Posted = { channel: string; ts: string };
+
+export type Permalink = { channel: string; ts: string; threadTs?: string };
+export type ThreadRef = { channel: string; ts: string };

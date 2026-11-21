@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseLimit } from '../src/command.js';
-import { UsageError } from '../src/slack-client.js';
+import { parseLimit } from '../src/commands/command.js';
+import { UsageError } from '../src/slack/slack-client.js';
 
 describe('parseLimit', () => {
   const spec = { fallback: 20, max: 100 };

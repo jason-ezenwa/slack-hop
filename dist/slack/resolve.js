@@ -1,9 +1,5 @@
 import { UsageError } from './slack-client.js';
-// Slack IDs are uppercase letters and digits. Requiring a digit keeps all-caps names like GENERAL from looking like IDs.
-const CONVERSATION_ID = /^[CGD](?=[A-Z0-9]*\d)[A-Z0-9]{6,}$/;
-const USER_ID = /^[UW](?=[A-Z0-9]*\d)[A-Z0-9]{6,}$/;
-const SLACK_TS = /^\d+\.\d+$/;
-const PERMALINK = /\/archives\/(?<channel>[A-Z0-9]+)\/p(?<seconds>\d{10})(?<micros>\d{6})/;
+import { CONVERSATION_ID, PERMALINK, SLACK_TS, USER_ID } from './slack-constants.js';
 // https://team.slack.com/archives/C123ABC/p1696000000123456?thread_ts=1695999999.000100
 export function parsePermalink(value) {
     const groups = PERMALINK.exec(value)?.groups;
@@ -77,8 +73,7 @@ async function resolveUserId(client, target) {
     }
     throw new UsageError(`No user with handle "@${handle}". Try: slack-hop find-user ${handle}`);
 }
-// Turns "#general", "general", a channel ID, a message link, "@handle" or a user ID into a conversation ID.
-// Users resolve to the DM conversation with them.
+// Accepts "#general", "general", a channel ID, a message link, "@handle" or a user ID (which resolves to the DM).
 export async function resolveConversation(client, target) {
     const permalink = parsePermalink(target);
     if (permalink)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parsePermalink, parseThreadLink, resolveConversation, threadTsIn, toSlackTs } from '../src/resolve.js';
-import { SlackClient, UsageError } from '../src/slack-client.js';
+import { parsePermalink, parseThreadLink, resolveConversation, threadTsIn, toSlackTs } from '../src/slack/resolve.js';
+import { SlackClient, UsageError } from '../src/slack/slack-client.js';
 import { fakeSlack } from './fake-slack.js';
 
 describe('parsePermalink', () => {
@@ -68,6 +68,7 @@ describe('resolveConversation', () => {
     { id: 'U0000SAM1', name: 'sam.one', real_name: 'Sam One', profile: { display_name: 'sam' } },
     { id: 'U0000SAM2', name: 'sam.two', real_name: 'Sam Two', profile: { display_name: 'sam' } },
   ];
+
   const slack = () =>
     fakeSlack({
       'conversations.list': (params) =>
@@ -113,9 +114,11 @@ describe('resolveConversation', () => {
 
   it('refuses a display name shared by several people', async () => {
     const { fetchFn, calls } = slack();
+
     await expect(resolveConversation(new SlackClient('xoxp-1', fetchFn), '@sam')).rejects.toThrow(
       '"@sam" matches several people: U0000SAM1 (@sam.one, Sam One); U0000SAM2 (@sam.two, Sam Two)',
     );
+
     expect(calls.some((call) => call.method === 'conversations.open')).toBe(false);
   });
 

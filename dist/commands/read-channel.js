@@ -1,7 +1,8 @@
-import { FULL_HELP, FULL_OPTION, limitHelp, optionalString, parseLimit, requirePositional, wantsFull } from '../command.js';
+import { FULL_HELP, FULL_OPTION } from './command-constants.js';
+import { limitHelp, optionalString, parseLimit, requirePositional, wantsFull } from './command.js';
 import { formatMessage, printList } from '../format.js';
-import { resolveConversation, toSlackTs } from '../resolve.js';
-import { UserNames } from '../user-names.js';
+import { resolveConversation, toSlackTs } from '../slack/resolve.js';
+import { UserNames } from '../slack/user-names.js';
 const LIMIT = { fallback: 20, max: 1000 };
 export const readChannelCommand = {
     name: 'read-channel',

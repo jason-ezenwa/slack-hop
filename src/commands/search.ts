@@ -1,15 +1,12 @@
-import { FULL_HELP, FULL_OPTION, limitHelp, parseLimit, requirePositional, type Command, wantsFull } from '../command.js';
+import { FULL_HELP, FULL_OPTION } from './command-constants.js';
+import type { Command } from './command-types.js';
+import { limitHelp, parseLimit, requirePositional, wantsFull } from './command.js';
 import { formatTs, messageAuthor, messageBody, printList } from '../format.js';
 import { personLabel } from '../person.js';
-import type { SlackMessage } from '../slack-types.js';
-import { UserNames } from '../user-names.js';
+import type { SearchMatch } from '../slack/slack-types.js';
+import { UserNames } from '../slack/user-names.js';
 
 const LIMIT = { fallback: 20, max: 100 };
-
-type SearchMatch = SlackMessage & {
-  permalink: string;
-  channel?: { id: string; name?: string; is_im?: boolean };
-};
 
 // Where a match was posted: "#general", or "DM with Ayomide (@ayomide)" so DMs can be told apart.
 async function matchLocation(match: SearchMatch, names: UserNames): Promise<string> {
@@ -40,6 +37,7 @@ export const searchCommand: Command = {
   needsWorkspace: true,
   async run({ client, positionals, options, json }) {
     requirePositional(positionals, 0, 'query');
+
     const data = await client.call<{ messages: { matches: SearchMatch[] } }>('search.messages', {
       query: positionals.join(' '),
       count: parseLimit(options.limit, LIMIT),
@@ -48,6 +46,7 @@ export const searchCommand: Command = {
     });
 
     const names = new UserNames(client);
+
     await printList(data.messages.matches, json, 'No matches.', async (match) => {
       const where = await matchLocation(match, names);
       const header = `[${formatTs(match.ts)}] ${where} · ${await messageAuthor(match, names)}`;

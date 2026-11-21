@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { configuredWorkspaces, resolveToken, SlackApiError, SlackClient, tokenEnvVar, UsageError } from '../src/slack-client.js';
+import { configuredWorkspaces, resolveToken, SlackApiError, SlackClient, tokenEnvVar, UsageError } from '../src/slack/slack-client.js';
 import { fakeFetch, fakeSlack } from './fake-slack.js';
 
 describe('tokenEnvVar', () => {
@@ -46,6 +46,7 @@ describe('resolveToken', () => {
 describe('SlackClient.call', () => {
   it('sends the token and form-encoded params, skipping undefined ones', async () => {
     const requests: { url: string; init?: RequestInit }[] = [];
+
     const client = new SlackClient(
       'xoxp-1',
       fakeFetch((url, init) => {
@@ -68,6 +69,7 @@ describe('SlackClient.call', () => {
     const error = await new SlackClient('xoxp-1', fetchFn).call('search.messages').catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(SlackApiError);
+
     expect((error as SlackApiError).message).toBe(
       'Slack API search.messages failed: missing_scope (the Slack app needs the "search:read" user scope)',
     );
@@ -78,6 +80,7 @@ describe('SlackClient.call', () => {
       new Response('', { status: 429, headers: { 'retry-after': '2' } }),
       new Response(JSON.stringify({ ok: true })),
     ];
+
     const wait = vi.fn(async () => {});
     const client = new SlackClient('xoxp-1', fakeFetch(() => responses.shift() as Response), wait);
 
@@ -120,12 +123,14 @@ describe('SlackClient.paginate', () => {
       p2: { items: [3, 4], next: 'p3' },
       p3: { items: [5], next: '' },
     };
+
     const { fetchFn, calls } = fakeSlack({
       'users.list': (params) => {
         const page = pages[params.get('cursor') ?? ''] as { items: number[]; next: string };
         return { members: page.items, response_metadata: { next_cursor: page.next } };
       },
     });
+
     const client = new SlackClient('xoxp-1', fetchFn);
 
     expect(await client.paginate('users.list', 'members', {}, 3)).toEqual([1, 2, 3]);

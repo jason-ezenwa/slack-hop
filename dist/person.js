@@ -1,8 +1,7 @@
 export function personFrom(user) {
     return { display: user.profile?.display_name || user.real_name || user.name, handle: user.name };
 }
-// "Jason (@chukwuemelie.ezenwa)", or just "@jason" when the display name is exactly the handle.
-// Names that differ only in capitals ("Slackbot" and "slackbot") still show both.
+// "Jane (@jane.doe)", or just "@jane" when the display name matches the handle exactly, capitals included.
 export function personLabel(person) {
     if (!person.handle)
         return person.display;

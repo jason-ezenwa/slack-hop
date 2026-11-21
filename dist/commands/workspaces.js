@@ -1,5 +1,5 @@
 import { printList } from '../format.js';
-import { configuredWorkspaces, resolveToken, SlackApiError, SlackClient } from '../slack-client.js';
+import { configuredWorkspaces, resolveToken, SlackApiError, SlackClient } from '../slack/slack-client.js';
 export const workspacesCommand = {
     name: 'workspaces',
     summary: 'List configured workspaces and check each token',

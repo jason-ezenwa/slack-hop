@@ -1,7 +1,8 @@
-import { FULL_HELP, FULL_OPTION, limitHelp, parseLimit, requirePositional, wantsFull } from '../command.js';
+import { FULL_HELP, FULL_OPTION } from './command-constants.js';
+import { limitHelp, parseLimit, requirePositional, wantsFull } from './command.js';
 import { formatTs, messageAuthor, messageBody, printList } from '../format.js';
 import { personLabel } from '../person.js';
-import { UserNames } from '../user-names.js';
+import { UserNames } from '../slack/user-names.js';
 const LIMIT = { fallback: 20, max: 100 };
 // Where a match was posted: "#general", or "DM with Ayomide (@ayomide)" so DMs can be told apart.
 async function matchLocation(match, names) {

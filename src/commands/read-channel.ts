@@ -1,8 +1,10 @@
-import { FULL_HELP, FULL_OPTION, limitHelp, optionalString, parseLimit, requirePositional, type Command, wantsFull } from '../command.js';
+import { FULL_HELP, FULL_OPTION } from './command-constants.js';
+import type { Command } from './command-types.js';
+import { limitHelp, optionalString, parseLimit, requirePositional, wantsFull } from './command.js';
 import { formatMessage, printList } from '../format.js';
-import { resolveConversation, toSlackTs } from '../resolve.js';
-import type { SlackMessage } from '../slack-types.js';
-import { UserNames } from '../user-names.js';
+import { resolveConversation, toSlackTs } from '../slack/resolve.js';
+import type { SlackMessage } from '../slack/slack-types.js';
+import { UserNames } from '../slack/user-names.js';
 
 const LIMIT = { fallback: 20, max: 1000 };
 
@@ -34,15 +36,18 @@ export const readChannelCommand: Command = {
   async run({ client, positionals, options, json }) {
     const since = optionalString(options.since);
     const until = optionalString(options.until);
+
     const params = {
       oldest: since ? toSlackTs(since) : undefined,
       latest: until ? toSlackTs(until) : undefined,
     };
+
     const limit = parseLimit(options.limit, LIMIT);
     const channel = await resolveConversation(client, requirePositional(positionals, 0, 'channel'));
 
     const messages = await client.paginate<SlackMessage>('conversations.history', 'messages', { channel, ...params }, limit);
     const names = new UserNames(client);
+
     await printList(messages.reverse(), json, 'No messages.', (message) =>
       formatMessage(message, names, wantsFull(options)),
     );

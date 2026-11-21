@@ -1,8 +1,4 @@
-const API_BASE = 'https://slack.com/api';
-const TOKEN_PREFIX = 'SLACK_TOKEN_';
-const MAX_RATE_LIMIT_RETRIES = 3;
-const DEFAULT_RETRY_AFTER_SECONDS = 1;
-const MAX_PAGE_SIZE = 200;
+import { API_BASE, DEFAULT_RETRY_AFTER_SECONDS, MAX_PAGE_SIZE, MAX_RATE_LIMIT_RETRIES, TOKEN_PREFIX } from './slack-constants.js';
 export class UsageError extends Error {
 }
 export class SlackApiError extends Error {

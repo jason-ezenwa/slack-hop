@@ -1,4 +1,4 @@
-import { personFrom } from './person.js';
+import { personFrom } from '../person.js';
 import { SlackApiError } from './slack-client.js';
 // Starts each lookup once and shares the pending result with every later caller.
 function memo(cache, key, load) {
@@ -20,7 +20,7 @@ async function orFallback(lookup, fallback) {
         throw error;
     }
 }
-// Looks up people and bots once each and remembers them for the rest of the command.
+// Caches people and bot lookups for the rest of the command.
 export class UserNames {
     client;
     people = new Map();
@@ -40,8 +40,7 @@ export class UserNames {
     dmPartner(channelId) {
         return memo(this.dmPartners, channelId, () => this.lookupDmPartner(channelId));
     }
-    // One paged users.list call instead of a users.info call per user, for commands that name many people.
-    // If it fails, names are looked up one by one as before.
+    // One paged users.list call instead of a users.info call per user; on failure, lookups fall back to one by one.
     async loadAll() {
         try {
             for await (const user of this.client.iterate('users.list', 'members')) {

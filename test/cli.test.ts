@@ -26,6 +26,7 @@ function stubSlack(handlers: Record<string, Handler>) {
     'users.info': () => ({ user: { id: 'U0000JANE', name: 'jane.doe', profile: { display_name: 'Jane' } } }),
     ...handlers,
   });
+
   vi.stubGlobal('fetch', slack.fetchFn);
   return slack.calls;
 }
@@ -34,6 +35,7 @@ describe('help', () => {
   it('lists every command', async () => {
     expect(await main(['--help'], {})).toBe(0);
     const help = output.join('\n');
+
     for (const name of ['workspaces', 'list-channels', 'read-channel', 'read-thread', 'search', 'send-message', 'find-user']) {
       expect(help).toContain(name);
     }
@@ -86,6 +88,7 @@ describe('read-channel', () => {
       '[2026-10-01 00:00 UTC] Jane (@jane.doe): first\n    (ts 1790812800.000100, 2 replies)',
       '[2026-10-01 00:01 UTC] Jane (@jane.doe): second, cc @Jane\n    (ts 1790812860.000200)',
     ]);
+
     expect(calls.filter((call) => call.method === 'users.info')).toHaveLength(1);
   });
 
@@ -111,6 +114,7 @@ describe('read-channel', () => {
 describe('read-thread', () => {
   it('reads the whole thread from a link to a reply, showing the repeated parent once', async () => {
     const parent = { ts: '1790812800.000100', user: 'U0000JANE', text: 'parent' };
+
     const calls = stubSlack({
       'conversations.replies': (params) =>
         params.get('cursor')
@@ -128,6 +132,7 @@ describe('read-thread', () => {
       '[2026-10-01 00:01 UTC] Jane (@jane.doe): reply 1',
       '[2026-10-01 00:02 UTC] Jane (@jane.doe): reply 2',
     ]);
+
     expect(calls[0]?.params.get('channel')).toBe('C0000GENERAL');
     expect(calls[0]?.params.get('ts')).toBe('1790812800.000100');
   });
@@ -162,6 +167,7 @@ describe('send-message', () => {
     expect(post?.params.get('channel')).toBe('C0000GENERAL');
     expect(post?.params.get('text')).toBe('hello world');
     expect(post?.params.has('thread_ts')).toBe(false);
+
     expect(output).toEqual([
       'Sent to C0000GENERAL (ts 1790813000.000500): https://acme.slack.com/archives/C0000GENERAL/p1790813000000500',
     ]);
@@ -198,6 +204,7 @@ describe('send-message', () => {
     vi.stubGlobal('fetch', async () => {
       throw new TypeError('fetch failed');
     });
+
     expect(await main(['send-message', 'C0000GENERAL', 'hi', '-w', 'client-b'], ENV)).toBe(1);
     expect(errors.join('\n')).toContain('The message may have been sent; check the conversation before retrying');
   });
@@ -205,6 +212,7 @@ describe('send-message', () => {
   it('warns that the message may have been sent when Slack has a server error', async () => {
     vi.stubGlobal('fetch', async () => new Response('', { status: 500 }));
     expect(await main(['send-message', 'C0000GENERAL', 'hi', '-w', 'client-b'], ENV)).toBe(1);
+
     expect(errors).toEqual([
       'Slack API chat.postMessage failed: http_500. The message may have been sent; check the conversation before retrying',
     ]);
@@ -244,6 +252,7 @@ describe('search', () => {
       permalink: `https://acme.slack.com/archives/${channel}/p1`,
       channel: { id: channel, is_im: true },
     });
+
     const calls = stubSlack({
       'search.messages': () => ({ messages: { matches: [dm('D0000SAM01', '1790812800.000100'), dm('D0000ALEX1', '1790812860.000200'), dm('D0000SAM01', '1790812920.000300')] } }),
       'conversations.info': (params) => ({ channel: { user: params.get('channel') === 'D0000SAM01' ? 'U0000SAM' : 'U0000ALEX' } }),
@@ -258,11 +267,13 @@ describe('search', () => {
     expect(await main(['search', 'hello', '-w', 'client-b'], ENV)).toBe(0);
 
     const locations = output.map((line) => line.slice('[2026-10-01 00:00 UTC] '.length, line.indexOf(' · ')));
+
     expect(locations).toEqual([
       'DM with Sam (@sam)',
       'DM with Alex (@alex)',
       'DM with Sam (@sam)',
     ]);
+
     expect(calls.filter((call) => call.method === 'conversations.info')).toHaveLength(2);
   });
 });

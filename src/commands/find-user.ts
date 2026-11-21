@@ -1,6 +1,7 @@
-import { requirePositional, type Command } from '../command.js';
+import type { Command } from './command-types.js';
+import { requirePositional } from './command.js';
 import { printList } from '../format.js';
-import { findUsers } from '../resolve.js';
+import { findUsers } from '../slack/resolve.js';
 import { personFrom, personLabel } from '../person.js';
 
 export const findUserCommand: Command = {
@@ -17,6 +18,7 @@ export const findUserCommand: Command = {
   needsWorkspace: true,
   async run({ client, positionals, json }) {
     const users = await findUsers(client, requirePositional(positionals, 0, 'query'));
+
     await printList(users, json, 'No matching users.', (user) => {
       const person = personFrom(user);
       const realName = user.profile?.real_name || user.real_name;
