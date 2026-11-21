@@ -1,4 +1,4 @@
-import type { SlackAttachment, SlackBlock, SlackBlockElement, SlackMessage, SlackTableCell, SlackTextObject } from './slack-types.js';
+import type { SlackAttachment, SlackBlock, SlackBlockElement, SlackMessage, SlackRawTextCell, SlackTableCell, SlackTextObject } from './slack-types.js';
 import { personLabel } from './person.js';
 import type { UserNames } from './user-names.js';
 
@@ -94,27 +94,30 @@ function blockTextObject(object: SlackTextObject | undefined): string | undefine
   return object.type === 'plain_text' ? escapeText(object.text) : object.text;
 }
 
-// A table cell is raw text or a rich-text block; a cell's paragraphs share its line.
-function cellText(cell: SlackTableCell): string {
-  if (typeof cell.text === 'string') return escapeText(cell.text);
-  return blockText([cell as SlackBlock]).replace(/\n/g, ' ');
-}
-
-// One line per table row, cells separated by " | ".
-function tableText(rows: SlackTableCell[][] = []): string {
-  return rows.map((row) => row.map(cellText).join(' | ')).join('\n');
-}
-
 export function blockText(blocks: SlackBlock[] = []): string {
   return blocks
     .flatMap((block) => [
       blockTextObject(block.text),
       ...(block.fields ?? []).map(blockTextObject),
       ...(block.elements ?? []).map(elementText),
-      tableText(block.rows),
+      ...(block.rows ?? []).map(rowText),
     ])
     .filter(Boolean)
     .join('\n');
+}
+
+const isRawTextCell = (cell: SlackTableCell): cell is SlackRawTextCell => cell.type === 'raw_text' && 'text' in cell && typeof cell.text === 'string';
+
+// A table cell's paragraphs share its line. A missing cell reads as empty rather than failing the command.
+function cellText(cell: SlackTableCell | null | undefined): string {
+  if (!cell) return '';
+  return isRawTextCell(cell) ? escapeText(cell.text) : blockText([cell]).replace(/\n/g, ' ');
+}
+
+// A table row goes on one line, its cells separated by " | "; a row of empty cells is skipped.
+function rowText(row: SlackTableCell[] | null | undefined): string | undefined {
+  const cells = (Array.isArray(row) ? row : []).map(cellText);
+  return cells.some(Boolean) ? cells.join(' | ') : undefined;
 }
 
 const isShare = (attachment: SlackAttachment) => Boolean(attachment.is_share || attachment.is_msg_unfurl);
@@ -154,13 +157,17 @@ function wordsOf(text: string): string {
   return text
     .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/<[^>|]+\|([^>]*)>/g, '$1')
+    .replace(/&(amp|lt|gt);/g, ' ')
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
 }
 
-function repeatsText(fromBlocks: string, text: string): boolean {
+// A bot's `text` may carry its tables as Markdown or leave them out, so both readings of the blocks are tried.
+function repeatsText(blocks: SlackBlock[], text: string): boolean {
   const words = wordsOf(text);
-  return words !== '' && wordsOf(fromBlocks).includes(words);
+  if (words === '') return false;
+  const withoutTables = blocks.filter((block) => !block.rows);
+  return [blocks, withoutTables].some((candidate) => wordsOf(blockText(candidate)).includes(words));
 }
 
 // The main text of a message: its blocks when they hold more than a copy of the text, else the text itself.
@@ -170,7 +177,7 @@ function messageText(message: SlackMessage): string {
   const fromBlocks = blockText(message.blocks);
   if (!hasLayoutBlocks(message)) return text || fromBlocks;
   if (!fromBlocks) return text;
-  if (!text || repeatsText(fromBlocks, text)) return fromBlocks;
+  if (!text || repeatsText(message.blocks ?? [], text)) return fromBlocks;
   return `${text}\n${fromBlocks}`;
 }
 

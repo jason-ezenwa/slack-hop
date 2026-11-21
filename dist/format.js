@@ -84,26 +84,28 @@ function blockTextObject(object) {
         return undefined;
     return object.type === 'plain_text' ? escapeText(object.text) : object.text;
 }
-// A table cell is raw text or a rich-text block; a cell's paragraphs share its line.
-function cellText(cell) {
-    if (typeof cell.text === 'string')
-        return escapeText(cell.text);
-    return blockText([cell]).replace(/\n/g, ' ');
-}
-// One line per table row, cells separated by " | ".
-function tableText(rows = []) {
-    return rows.map((row) => row.map(cellText).join(' | ')).join('\n');
-}
 export function blockText(blocks = []) {
     return blocks
         .flatMap((block) => [
         blockTextObject(block.text),
         ...(block.fields ?? []).map(blockTextObject),
         ...(block.elements ?? []).map(elementText),
-        tableText(block.rows),
+        ...(block.rows ?? []).map(rowText),
     ])
         .filter(Boolean)
         .join('\n');
+}
+const isRawTextCell = (cell) => cell.type === 'raw_text' && 'text' in cell && typeof cell.text === 'string';
+// A table cell's paragraphs share its line. A missing cell reads as empty rather than failing the command.
+function cellText(cell) {
+    if (!cell)
+        return '';
+    return isRawTextCell(cell) ? escapeText(cell.text) : blockText([cell]).replace(/\n/g, ' ');
+}
+// A table row goes on one line, its cells separated by " | "; a row of empty cells is skipped.
+function rowText(row) {
+    const cells = (Array.isArray(row) ? row : []).map(cellText);
+    return cells.some(Boolean) ? cells.join(' | ') : undefined;
 }
 const isShare = (attachment) => Boolean(attachment.is_share || attachment.is_msg_unfurl);
 const isLinkPreview = (attachment) => Boolean(attachment.from_url) && !isShare(attachment);
@@ -141,12 +143,17 @@ function wordsOf(text) {
     return text
         .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
         .replace(/<[^>|]+\|([^>]*)>/g, '$1')
+        .replace(/&(amp|lt|gt);/g, ' ')
         .replace(/[^\p{L}\p{N}]+/gu, ' ')
         .trim();
 }
-function repeatsText(fromBlocks, text) {
+// A bot's `text` may carry its tables as Markdown or leave them out, so both readings of the blocks are tried.
+function repeatsText(blocks, text) {
     const words = wordsOf(text);
-    return words !== '' && wordsOf(fromBlocks).includes(words);
+    if (words === '')
+        return false;
+    const withoutTables = blocks.filter((block) => !block.rows);
+    return [blocks, withoutTables].some((candidate) => wordsOf(blockText(candidate)).includes(words));
 }
 // The main text of a message: its blocks when they hold more than a copy of the text, else the text itself.
 // A summary the blocks don't repeat (e.g. a bot that adds only a footer block) is kept above them.
@@ -157,7 +164,7 @@ function messageText(message) {
         return text || fromBlocks;
     if (!fromBlocks)
         return text;
-    if (!text || repeatsText(fromBlocks, text))
+    if (!text || repeatsText(message.blocks ?? [], text))
         return fromBlocks;
     return `${text}\n${fromBlocks}`;
 }

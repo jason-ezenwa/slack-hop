@@ -41,11 +41,12 @@ export type SlackBlock = {
   text?: SlackTextObject;
   fields?: SlackTextObject[];
   elements?: SlackBlockElement[];
-  // Table blocks: each row is a list of cells, each a rich-text block or raw text.
+  // Table blocks: rows of cells.
   rows?: SlackTableCell[][];
 };
 
-export type SlackTableCell = SlackBlock | { type: 'raw_text'; text: string };
+export type SlackRawTextCell = { type: 'raw_text'; text: string };
+export type SlackTableCell = SlackBlock | SlackRawTextCell;
 
 // The rich-text and context elements slack-hop reads. Others (images, buttons, ...) are ignored.
 export type SlackBlockElement =
