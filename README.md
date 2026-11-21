@@ -49,10 +49,10 @@ In Claude Code on the web, add them in the environment's settings (environment m
 Add this to the environment's setup script (or run it locally). It needs Node 22 or newer:
 
 ```sh
-npm install -g --install-links github:jason-ezenwa/slack-hop
+npm install -g --install-links github:jason-ezenwa/slack-hop#v0.1.0
 ```
 
-Keep `--install-links`: without it, npm 10 links the command to a temporary download folder that it then deletes, leaving a broken `slack-hop`. Pin a version with a tag: `github:jason-ezenwa/slack-hop#v0.1.0`.
+Keep `--install-links`: without it, npm 10 links the command to a temporary download folder that it then deletes, leaving a broken `slack-hop`. The `#v0.1.0` tag pins a release; without it, npm installs the latest commit on `main`, released or not.
 
 ### 4. Tell your agent about it
 
